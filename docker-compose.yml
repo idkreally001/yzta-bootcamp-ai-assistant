@@ -1,0 +1,38 @@
+services:
+  web-bootcamp-ai:
+    image: odoo:19.0
+    container_name: odoo-web-bootcamp-ai
+    depends_on:
+      - db-bootcamp-ai
+    ports:
+      - "8077:8069"
+    volumes:
+      - ./custom_addons:/mnt/extra-addons
+      - ./odoo.conf:/etc/odoo/odoo.conf:ro
+      - ./data/web:/var/lib/odoo
+    environment:
+      - HOST=odoo-db-bootcamp-ai
+      - USER=odoo
+      - PASSWORD=odoo_db_pass
+      - AI_QUERY_BACKEND=${AI_QUERY_BACKEND:-gemini}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    restart: unless-stopped
+    networks:
+      - odoo-net-bootcamp-ai
+
+  db-bootcamp-ai:
+    image: postgres:16
+    container_name: odoo-db-bootcamp-ai
+    environment:
+      - POSTGRES_USER=odoo
+      - POSTGRES_PASSWORD=odoo_db_pass
+      - POSTGRES_DB=postgres
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - odoo-net-bootcamp-ai
+
+networks:
+  odoo-net-bootcamp-ai:
+    name: odoo-net-bootcamp-ai
