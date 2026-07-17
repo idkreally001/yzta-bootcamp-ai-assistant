@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="odoo_ai_query.SystrayItem">
+        <div class="o_ai_query_systray d-flex align-items-center px-2 cursor-pointer"
+             t-on-click="onClick" title="AI İş Asistanı">
+            <i class="fa fa-magic" role="img" aria-label="AI İş Asistanı"/>
+        </div>
+    </t>
+</templates>
