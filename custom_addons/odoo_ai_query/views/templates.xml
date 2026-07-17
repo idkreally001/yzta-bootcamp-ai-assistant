@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="chat_page" name="AI Business Query Chat">
+        <html>
+            <head>
+                <title>AI İş Asistanı</title>
+                <link rel="stylesheet" type="text/css"
+                      href="/web/static/src/libs/fontawesome/css/font-awesome.css"/>
+                <link rel="stylesheet" type="text/css" href="/odoo_ai_query/static/src/chat.css"/>
+            </head>
+            <body>
+                <div id="ai-chat-root">
+                    <header class="ai-chat-header">
+                        <div class="ai-chat-header-icon"><i class="fa fa-magic"/></div>
+                        <div>
+                            <h1>AI İş Asistanı</h1>
+                            <p>Satışlar, ürünler ve stok hakkında doğal dilde soru sorun.</p>
+                        </div>
+                    </header>
+                    <div id="ai-chat-messages">
+                        <div id="ai-chat-empty-state">
+                            <p>Bir soru sorarak başlayın, ya da örneklerden birini deneyin:</p>
+                            <div id="ai-chat-suggestions">
+                                <button type="button" class="ai-suggestion-chip"
+                                        data-question="Kaç tane satış siparişi var?">Kaç satış siparişi var?</button>
+                                <button type="button" class="ai-suggestion-chip"
+                                        data-question="En pahalı 5 ürün hangileri?">En pahalı 5 ürün</button>
+                                <button type="button" class="ai-suggestion-chip"
+                                        data-question="Stokta hangi ürünlerden ne kadar var?">Stok durumu</button>
+                            </div>
+                        </div>
+                    </div>
+                    <form id="ai-chat-form">
+                        <input type="text" id="ai-chat-input"
+                               placeholder="Örn: Bu ay en çok satan 5 ürün ne?" autocomplete="off"/>
+                        <button type="submit" id="ai-chat-submit">
+                            <i class="fa fa-paper-plane"/>
+                        </button>
+                    </form>
+                </div>
+                <script type="text/javascript" src="/odoo_ai_query/static/src/chat.js"/>
+            </body>
+        </html>
+    </template>
+</odoo>
