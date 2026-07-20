@@ -88,7 +88,8 @@ damgalarını yansıtır; aşağıda üretim sürecindeki gerçek aşamalar ve k
 sorunlar özetlenmiştir.
 
 ### Aşama 1 — Ortam Kurulumu
-Odoo 19 için mevcut yerel geliştirme aracı (`odoom`) varsayılan olarak Enterprise
+Odoo 19 için mevcut yerel geliştirme aracı ([`odoom`](https://github.com/idkreally001/odoom) —
+kendi yazdığım Docker Compose tabanlı Odoo ortam yöneticisi) varsayılan olarak Enterprise
 kaynak ağacını mount ediyordu; bootcamp kuralları serbest/ücretsiz araç kullanımını
 şart koştuğu için bu proje **Community Edition** ile, elle yazılmış bir
 `docker-compose.yml` üzerinden sıfırdan kuruldu (Enterprise mount'u olmadan).
