@@ -8,7 +8,7 @@ Odoo verileriniz üzerinde doğal dil ile soru sorabileceğiniz bir AI asistanı
 Sorular çok adımlı bir agent hattından geçer: niyet tespiti, sorgu planlama,
 Odoo ORM üzerinden güvenli veri çekme ve doğal dilde özetleme.
 """,
-    "author": "Islam",
+    "author": "idkreally001",
     "license": "LGPL-3",
     "depends": ["base", "sale_management", "stock"],
     "data": [
