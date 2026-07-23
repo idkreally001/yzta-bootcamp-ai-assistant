@@ -1,6 +1,7 @@
 import logging
 import os
 
+from . import rag_store
 from .gemini_client import GeminiClient
 from .lmstudio_client import LMStudioClient
 
@@ -47,28 +48,31 @@ def _validate_domain(domain):
     return domain
 
 
-INTENT_PROMPT = """Sen bir Odoo iş verisi sorgu asistanısın. Kullanıcının sorusunu analiz et
-ve hangi Odoo modelinin sorgulanması gerektiğine karar ver.
+TOOL_ROUTER_PROMPT = """Sen bir Odoo iş asistanısın. Kullanıcının sorusuna yanıt vermek için
+hangi araç(lar)ın kullanılması gerektiğine karar ver.
 
-Kullanılabilir modeller:
-{models}
+Kullanılabilir araçlar:
+1. query_data — canlı işletme verisi sorgular (satış siparişleri, ürünler, stok miktarları).
+   Sayısal/listeleme sorularında kullanılır (örn. "kaç sipariş var", "en pahalı ürünler").
+   Sorgulanabilir modeller: {models}
+2. search_docs — Odoo kullanım rehberi / SSS içinde arama yapar (örn. "sipariş nasıl
+   oluşturulur", "iade nasıl yapılır", süreç/prosedür soruları — canlı veri değil).
 
-Son konuşma geçmişi (model, soru):
+Son konuşma geçmişi (araç, model, soru):
 {recent_turns}
 
 VARSAYILAN KURAL: Kullanıcının sorusu kısa/belirsizse (örn. "kimlerden?", "fiyatları?",
-"ücretleri?", "ne zaman?", "toplamı?") EN SON TURDAKİ MODELİ TEKRAR SEÇ. Bu tür sorular
-neredeyse her zaman önceki sonuç kümesinin bir detayını sorar — "fiyatlar" bir sipariş
-bağlamında sipariş tutarı, ürün bağlamında ürün fiyatı anlamına gelebilir; hangi bağlamda
+"ücretleri?", "ne zaman?", "toplamı?") EN SON TURDAKİ ARAÇ VE MODELİ TEKRAR SEÇ. Bu tür
+sorular neredeyse her zaman önceki sonuç kümesinin bir detayını sorar. Hangi bağlamda
 olduğumuzu SON TURDAN anla, kelimenin kendisinden değil.
 
-Yalnızca kullanıcı YENİ bir konu için AÇIK bir isim/kelime kullanırsa model değiştir
-(örn. önceki tur sipariş iken kullanıcı "ürünler" veya "stok" kelimesini açıkça kullanırsa).
+Yalnızca kullanıcı YENİ bir konu için AÇIK bir isim/kelime kullanırsa araç/model değiştir.
+Bir soru hem canlı veri hem prosedür bilgisi gerektiriyorsa iki aracı da seçebilirsin.
 
 Yalnızca şu JSON formatında yanıt ver:
-{{"model": "<model.name>", "reasoning": "<kısa açıklama>"}}
+{{"tools": ["query_data" | "search_docs", ...], "model": "<query_data için model.name ya da null>", "reasoning": "<kısa açıklama>"}}
 
-Eğer soru bu modellerin hiçbiriyle ilgili değilse model alanını null yap.
+Eğer soru hiçbir araçla ilgili değilse tools boş liste [] yap.
 """
 
 PLAN_PROMPT = """Sen bir Odoo ORM sorgu planlayıcısısın. Kullanıcının sorusunu ve seçilen
@@ -101,106 +105,150 @@ Sorgu çok genelse (örn. "tüm siparişler") domain'i boş liste [] yap ve filt
 Bugünün tarihi: {today}
 """
 
-SUMMARY_PROMPT = """Sen bir işletme verisi asistanısın. Aşağıdaki ham veriyi kullanıcının
+SUMMARY_PROMPT = """Sen bir işletme verisi asistanısın. Aşağıdaki bilgiyi kullanıcının
 sorusuna doğal, kısa ve net bir Türkçe yanıt haline getir. Sayısal özetler
 (toplam, ortalama, en yüksek/düşük) varsa SADECE aşağıdaki ham veriden hesapla.
 
-ÖNEMLİ: Yalnızca aşağıda verilen ham veriyi kullan. Listede olmayan bir kayıttan
+ÖNEMLİ: Yalnızca aşağıda verilen bilgiyi kullan. Listede olmayan bir kayıttan
 (örn. uydurma sipariş numarası) asla bahsetme. "Bulunan kayıt sayısı" değeri her
 zaman doğrudur — önceki konuşmadaki bir sayıyla çelişse bile bu sayıyı kullan ve
 gerekirse farkı kullanıcıya açıkla (örn. filtre değişti, farklı bir alt küme sorgulandı).
 
 Kullanıcının orijinal sorusu: {question}
+
+--- Canlı veri sonucu (varsa) ---
 Sorgulanan model: {model}
 Bulunan kayıt sayısı: {count}
 Ham veri (JSON): {data}
+
+--- SSS/rehber sonucu (varsa) ---
+{doc_context}
 
 Yalnızca doğal dilde yanıt ver, JSON değil, markdown formatlaması kullanma.
 """
 
 
 def run_agent(env, question, history=None):
-    """4-step agent pipeline: intent -> plan -> execute -> summarize.
+    """Agentic pipeline: tool routing -> (query_data and/or search_docs) -> summarize.
 
-    Returns dict: {answer, model, count, steps} where `steps` records what
-    the agent decided at each stage (useful for demo/debugging transparency).
+    The router picks one or both tools per question — this is genuine agentic
+    tool-selection, not a fixed sequence: a data question skips RAG entirely,
+    a procedural question skips the ORM query entirely, and a mixed question
+    (rare) can trigger both, merged into one summary.
+
+    Returns dict: {answer, model, count, steps, ...} where `steps` records
+    what the agent decided at each stage (useful for demo/debugging).
     """
     llm = get_llm_client()
     history = history or []
     trace = []
 
-    # Step 1: intent classification
+    # Step 1: tool routing
     models_desc = "\n".join(f"- {m}: {info['label']}" for m, info in ALLOWED_MODELS.items())
     recent_turns = "\n".join(
-        f"- model={h.get('model')}, soru={h['question']!r}" for h in history[-3:]
+        f"- araç={h.get('tools')}, model={h.get('model')}, soru={h['question']!r}"
+        for h in history[-3:]
     ) or "(yok)"
-    intent = llm.complete_json(
-        INTENT_PROMPT.format(models=models_desc, recent_turns=recent_turns),
+    routing = llm.complete_json(
+        TOOL_ROUTER_PROMPT.format(models=models_desc, recent_turns=recent_turns),
         question,
     )
-    trace.append({"step": "intent", "output": intent})
+    trace.append({"step": "route", "output": routing})
 
-    model = intent.get("model")
-    if not model or model not in ALLOWED_MODELS:
+    tools = routing.get("tools") or []
+    model = routing.get("model")
+
+    if not tools:
         return {
             "answer": "Bu soruyu mevcut verilerle yanıtlayamıyorum. Satış siparişleri, "
-            "ürünler veya stok durumu hakkında sorabilirsiniz.",
+            "ürünler, stok durumu veya Odoo kullanım rehberi hakkında sorabilirsiniz.",
             "model": None,
             "count": 0,
+            "tools": [],
             "steps": trace,
         }
 
-    # Step 2: query planning
-    allowed_fields = ALLOWED_MODELS[model]["fields"]
-    previous_turn = _previous_turn_context(history, model)
-    plan = llm.complete_json(
-        PLAN_PROMPT.format(
-            model=model,
-            fields=allowed_fields,
-            previous_turn=previous_turn,
-            today=env.context.get("today") or "",
-        ),
-        question,
-    )
-    trace.append({"step": "plan", "output": plan})
+    records = []
+    domain = fields = limit = order = None
+    previous_turn = None
 
-    filter_changed = plan.get("filter_changed", True)
-    if not filter_changed and previous_turn and previous_turn.get("domain") is not None:
-        # Mechanically reuse the prior turn's exact query — never trust the LLM
-        # to faithfully reconstruct "no change" from a text description, since
-        # it tends to silently invent a different (wrong) filter instead.
-        domain = previous_turn["domain"]
-        fields = previous_turn.get("fields") or allowed_fields
-        limit = previous_turn.get("limit") or MAX_ROWS
-        order = previous_turn.get("order")
+    if "query_data" in tools and model in ALLOWED_MODELS:
+        # Step 2a: query planning
+        allowed_fields = ALLOWED_MODELS[model]["fields"]
+        previous_turn = _previous_turn_context(history, model)
+        plan = llm.complete_json(
+            PLAN_PROMPT.format(
+                model=model,
+                fields=allowed_fields,
+                previous_turn=previous_turn,
+                today=env.context.get("today") or "",
+            ),
+            question,
+        )
+        trace.append({"step": "plan", "output": plan})
+
+        filter_changed = plan.get("filter_changed", True)
+        if not filter_changed and previous_turn and previous_turn.get("domain") is not None:
+            # Mechanically reuse the prior turn's exact query — never trust the
+            # LLM to faithfully reconstruct "no change" from a text description,
+            # since it tends to silently invent a different (wrong) filter.
+            domain = previous_turn["domain"]
+            fields = previous_turn.get("fields") or allowed_fields
+            limit = previous_turn.get("limit") or MAX_ROWS
+            order = previous_turn.get("order")
+        else:
+            domain = _validate_domain(plan.get("domain", []))
+            requested_fields = plan.get("fields") or allowed_fields
+            fields = [f for f in requested_fields if f in allowed_fields]
+            if not fields:
+                fields = allowed_fields
+            limit = min(int(plan.get("limit") or MAX_ROWS), MAX_ROWS)
+            order = plan.get("order") or None
+            if order:
+                order_field = order.split()[0]
+                if order_field not in allowed_fields:
+                    order = None
+
+        # Step 3a: execute — read-only, under the calling user's own ACL/record rules
+        records = env[model].search_read(domain, fields, limit=limit, order=order)
+        trace.append({"step": "execute", "output": {"count": len(records)}})
     else:
-        domain = _validate_domain(plan.get("domain", []))
-        requested_fields = plan.get("fields") or allowed_fields
-        fields = [f for f in requested_fields if f in allowed_fields]
-        if not fields:
-            fields = allowed_fields
-        limit = min(int(plan.get("limit") or MAX_ROWS), MAX_ROWS)
-        order = plan.get("order") or None
-        if order:
-            order_field = order.split()[0]
-            if order_field not in allowed_fields:
-                order = None
+        model = None
 
-    # Step 3: execute — read-only, under the calling user's own ACL/record rules
-    records = env[model].search_read(domain, fields, limit=limit, order=order)
-    trace.append({"step": "execute", "output": {"count": len(records)}})
+    doc_hits = []
+    if "search_docs" in tools:
+        # Step 2b/3b: RAG retrieval over the Odoo usage FAQ
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if api_key:
+            try:
+                doc_hits = rag_store.search_docs(question, api_key)
+            except Exception:
+                _logger.exception("RAG search failed")
+        trace.append({"step": "search_docs", "output": {"hits": len(doc_hits)}})
+
+    if not records and not doc_hits:
+        return {
+            "answer": "Bu konuda mevcut verilerde veya rehberde bir sonuç bulamadım.",
+            "model": model,
+            "count": 0,
+            "tools": tools,
+            "domain": domain,
+            "steps": trace,
+        }
 
     # Step 4: summarize
     # Data sent to the LLM is capped at MAX_ROWS (same as the query limit) so
     # the visible row count always matches `count` — a mismatch here previously
     # caused the model to narrate a wrong total taken from the truncated list.
+    doc_context = "\n\n".join(f"[{d['title']}]\n{d['content']}" for d in doc_hits) or "(yok)"
     answer = llm.complete_text(
         "Sen yardımsever bir işletme veri asistanısın.",
         SUMMARY_PROMPT.format(
             question=question,
-            model=ALLOWED_MODELS[model]["label"],
+            model=ALLOWED_MODELS[model]["label"] if model else "(yok)",
             count=len(records),
             data=records[:MAX_ROWS],
+            doc_context=doc_context,
         ),
     )
     trace.append({"step": "summarize", "output": {"answer": answer}})
@@ -209,6 +257,7 @@ def run_agent(env, question, history=None):
         "answer": answer,
         "model": model,
         "count": len(records),
+        "tools": tools,
         "domain": domain,
         "fields": fields,
         "limit": limit,

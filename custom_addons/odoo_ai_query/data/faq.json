@@ -1,0 +1,32 @@
+[
+  {
+    "id": "yeni-siparis",
+    "title": "Yeni satış siparişi nasıl oluşturulur?",
+    "content": "Satış > Siparişler menüsünden 'Yeni' butonuna tıklayın. Müşteriyi seçin, ürün satırlarını ekleyin (ürün, miktar, birim fiyat otomatik gelir ama düzenlenebilir). 'Sipariş Onayla' butonuna basıldığında sipariş kesinleşir ve stoktan rezervasyon oluşur. Onay öncesinde sipariş 'Teklif' durumundadır ve stok etkilenmez."
+  },
+  {
+    "id": "iade-nasil-yapilir",
+    "title": "Bir siparişte iade/geri ödeme nasıl yapılır?",
+    "content": "Teslim edilmiş bir siparişte iade almak için ilgili teslimat (delivery) kaydından 'İade' (Return) işlemi başlatılır; bu otomatik olarak stoğa geri giriş yapan bir ters transfer oluşturur. Ödeme iadesi için Muhasebe > Faturalar üzerinden orijinal faturaya bağlı bir alacak dekontu (credit note) kesilir."
+  },
+  {
+    "id": "stok-azaldi",
+    "title": "Bir ürünün stoğu azaldığında ne yapılmalı?",
+    "content": "Envanter > Ürünler üzerinden ilgili ürünün 'Yeniden Sipariş Kuralları' (Reordering Rules) sekmesinden minimum/maksimum stok seviyeleri tanımlanabilir. Stok bu eşiğin altına düştüğünde sistem otomatik olarak tedarikçiye satın alma talebi (Purchase Order taslağı) oluşturabilir."
+  },
+  {
+    "id": "musteri-ekleme",
+    "title": "Yeni müşteri/tedarikçi nasıl eklenir?",
+    "content": "Kişiler (Contacts) uygulamasından 'Yeni' ile eklenebilir; Şirket ya da Birey olarak tipi seçilir. Aynı kayıt hem müşteri hem tedarikçi olarak işaretlenebilir; bu ayrım satış ve satın alma formlarındaki 'Müşteri/Tedarikçi' filtrelerinde otomatik olarak kullanılır."
+  },
+  {
+    "id": "fiyat-listesi",
+    "title": "Ürün fiyatları nasıl güncellenir veya toplu değiştirilir?",
+    "content": "Tekil ürün fiyatı Envanter > Ürünler formundan 'Satış Fiyatı' alanından değiştirilir. Toplu güncelleme için liste görünümünde birden fazla ürün seçilip sağ tık menüsünden 'Toplu Düzenle' kullanılabilir, ya da farklı müşteri segmentleri için Satış > Fiyat Listeleri (Pricelists) tanımlanabilir."
+  },
+  {
+    "id": "sale-order-durumlari",
+    "title": "Satış siparişi durumları (Teklif, Onaylandı, İptal) ne anlama gelir?",
+    "content": "'Teklif' (Quotation) aşamasında sipariş henüz kesinleşmemiştir, stok/muhasebe etkilenmez. 'Sipariş Onaylandı' (Sales Order) durumunda stok rezervasyonu ve teslimat süreci başlar. 'İptal Edildi' durumunda tüm rezervasyonlar geri alınır. Bu durumlar sale.order modelindeki 'state' alanında tutulur."
+  }
+]

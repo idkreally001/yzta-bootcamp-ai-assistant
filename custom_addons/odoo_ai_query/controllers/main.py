@@ -36,6 +36,7 @@ class AIQueryController(http.Controller):
             "question": question,
             "answer": result["answer"],
             "model": result["model"],
+            "tools": result.get("tools", []),
             "domain": result.get("domain", []),
             "fields": result.get("fields"),
             "limit": result.get("limit"),
@@ -47,6 +48,7 @@ class AIQueryController(http.Controller):
         return {
             "answer": result["answer"],
             "model": result["model"],
+            "tools": result.get("tools", []),
             "count": result["count"],
         }
 
