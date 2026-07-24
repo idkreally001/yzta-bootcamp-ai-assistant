@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="rule_ai_conversation_own_only" model="ir.rule">
+        <field name="name">AI Conversation: own records only</field>
+        <field name="model_id" ref="model_odoo_ai_conversation"/>
+        <field name="domain_force">[('user_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+</odoo>

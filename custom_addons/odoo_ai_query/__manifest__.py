@@ -12,6 +12,8 @@ Odoo ORM üzerinden güvenli veri çekme ve doğal dilde özetleme.
     "license": "LGPL-3",
     "depends": ["base", "sale_management", "stock"],
     "data": [
+        "security/ir.model.access.csv",
+        "security/ir_rule.xml",
         "views/templates.xml",
     ],
     "assets": {

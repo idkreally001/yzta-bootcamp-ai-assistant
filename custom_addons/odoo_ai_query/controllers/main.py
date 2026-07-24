@@ -1,3 +1,4 @@
+import json
 import logging
 
 from odoo import http
@@ -7,9 +8,7 @@ from ..services.agent import run_agent
 
 _logger = logging.getLogger(__name__)
 
-# Conversation history kept in-process, keyed by Odoo session id.
-# Fine for a bootcamp demo; would move to a persisted model for production.
-_SESSION_HISTORY = {}
+HISTORY_TURNS = 10
 
 
 class AIQueryController(http.Controller):
@@ -17,14 +16,44 @@ class AIQueryController(http.Controller):
     def chat_page(self, **kwargs):
         return request.render("odoo_ai_query.chat_page", {})
 
+    def _get_or_create_conversation(self):
+        session_key = request.session.sid
+        Conversation = request.env["odoo.ai.conversation"]
+        conversation = Conversation.search(
+            [("user_id", "=", request.env.uid), ("session_key", "=", session_key)],
+            limit=1,
+        )
+        if not conversation:
+            conversation = Conversation.create(
+                {"user_id": request.env.uid, "session_key": session_key}
+            )
+        return conversation
+
+    def _load_history(self, conversation):
+        lines = conversation.line_ids[-HISTORY_TURNS:]
+        history = []
+        for line in lines:
+            history.append({
+                "question": line.question,
+                "answer": line.answer,
+                "model": line.model_name or None,
+                "tools": (line.tools or "").split(",") if line.tools else [],
+                "domain": json.loads(line.domain) if line.domain else [],
+                "fields": json.loads(line.field_names) if line.field_names else None,
+                "limit": line.limit or None,
+                "order": line.order or None,
+                "count": line.record_count,
+            })
+        return history
+
     @http.route("/odoo-ai/chat", type="jsonrpc", auth="user", methods=["POST"])
     def chat(self, question=None, **kwargs):
         question = (question or "").strip()
         if not question:
             return {"error": "Soru boş olamaz."}
 
-        session_key = request.session.sid
-        history = _SESSION_HISTORY.setdefault(session_key, [])
+        conversation = self._get_or_create_conversation()
+        history = self._load_history(conversation)
 
         try:
             result = run_agent(request.env, question, history=history)
@@ -32,18 +61,18 @@ class AIQueryController(http.Controller):
             _logger.exception("AI agent failed")
             return {"error": f"Bir hata oluştu: {exc}"}
 
-        history.append({
+        request.env["odoo.ai.conversation.line"].create({
+            "conversation_id": conversation.id,
             "question": question,
             "answer": result["answer"],
-            "model": result["model"],
-            "tools": result.get("tools", []),
-            "domain": result.get("domain", []),
-            "fields": result.get("fields"),
-            "limit": result.get("limit"),
-            "order": result.get("order"),
-            "count": result["count"],
+            "model_name": result.get("model") or False,
+            "tools": ",".join(result.get("tools", [])),
+            "domain": json.dumps(result.get("domain") or []),
+            "field_names": json.dumps(result.get("fields")) if result.get("fields") else False,
+            "limit": result.get("limit") or 0,
+            "order": result.get("order") or False,
+            "record_count": result["count"],
         })
-        history[:] = history[-10:]  # keep last 10 turns
 
         return {
             "answer": result["answer"],
@@ -54,5 +83,6 @@ class AIQueryController(http.Controller):
 
     @http.route("/odoo-ai/history", type="jsonrpc", auth="user", methods=["POST"])
     def clear_history(self, **kwargs):
-        _SESSION_HISTORY.pop(request.session.sid, None)
+        conversation = self._get_or_create_conversation()
+        conversation.line_ids.unlink()
         return {"ok": True}

@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_odoo_ai_conversation_user,odoo.ai.conversation.user,model_odoo_ai_conversation,base.group_user,1,1,1,1
+access_odoo_ai_conversation_line_user,odoo.ai.conversation.line.user,model_odoo_ai_conversation_line,base.group_user,1,1,1,1
