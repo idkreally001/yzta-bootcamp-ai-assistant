@@ -50,42 +50,84 @@
         return row;
     }
 
-    async function sendQuestion(question) {
-        const resp = await fetch("/odoo-ai/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { question: question } }),
+    function streamQuestion(question, { onChunk, onDone, onError }) {
+        const url = "/odoo-ai/chat/stream?question=" + encodeURIComponent(question);
+        const source = new EventSource(url);
+
+        source.addEventListener("chunk", function (ev) {
+            const data = JSON.parse(ev.data);
+            onChunk(data.text);
         });
-        const payload = await resp.json();
-        return payload.result || {};
+        source.addEventListener("done", function (ev) {
+            const data = JSON.parse(ev.data);
+            source.close();
+            onDone(data);
+        });
+        source.addEventListener("error", function (ev) {
+            source.close();
+            let message = "Bağlantı hatası";
+            try {
+                message = JSON.parse(ev.data).error || message;
+            } catch (e) {
+                // ev.data may be empty on network-level errors (no server payload)
+            }
+            onError(message);
+        });
+        // Native EventSource "error" fires on any connection failure too,
+        // without necessarily going through our named "error" event above.
+        source.onerror = function () {
+            source.close();
+            onError("Sunucu ile bağlantı kesildi.");
+        };
     }
 
-    async function handleQuestion(question) {
+    function handleQuestion(question) {
         removeEmptyState();
         appendMessage(question, "user");
         const typingRow = appendTyping();
         inputEl.disabled = true;
         submitEl.disabled = true;
 
-        try {
-            const result = await sendQuestion(question);
-            typingRow.remove();
-            if (result.error) {
-                appendMessage(result.error, "error");
-            } else {
-                const meta = result.model
-                    ? `model: ${result.model} · ${result.count} kayıt`
-                    : null;
-                appendMessage(result.answer, "assistant", meta);
-            }
-        } catch (err) {
-            typingRow.remove();
-            appendMessage("Sunucuya bağlanılamadı: " + err, "error");
-        } finally {
+        let bubbleRow = null;
+        let bubbleEl = null;
+        let fullText = "";
+        let settled = false;
+
+        function finish() {
+            if (settled) return;
+            settled = true;
             inputEl.disabled = false;
             submitEl.disabled = false;
             inputEl.focus();
         }
+
+        streamQuestion(question, {
+            onChunk: function (text) {
+                if (!bubbleRow) {
+                    typingRow.remove();
+                    bubbleRow = appendMessage("", "assistant");
+                    bubbleEl = bubbleRow.querySelector(".ai-msg");
+                }
+                fullText += text;
+                bubbleEl.textContent = fullText;
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+            },
+            onDone: function (meta) {
+                if (bubbleEl && meta.model) {
+                    const metaEl = document.createElement("span");
+                    metaEl.className = "meta";
+                    metaEl.textContent = `model: ${meta.model} · ${meta.count} kayıt`;
+                    bubbleEl.appendChild(metaEl);
+                }
+                finish();
+            },
+            onError: function (message) {
+                typingRow.remove();
+                if (bubbleRow) bubbleRow.remove();
+                appendMessage(message, "error");
+                finish();
+            },
+        });
     }
 
     formEl.addEventListener("submit", function (ev) {

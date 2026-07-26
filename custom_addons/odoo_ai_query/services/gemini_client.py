@@ -81,3 +81,55 @@ class GeminiClient(LLMClient):
 
     def complete_text(self, system_prompt, user_prompt):
         return self._call(system_prompt, user_prompt, json_mode=False)
+
+    def stream_text(self, system_prompt, user_prompt):
+        """Yield text chunks from the summarize step as they stream in.
+
+        Only the primary model is used here (no 429 fallback mid-stream —
+        falling back after tokens have already started rendering would be
+        confusing to watch), which is acceptable since streaming is only
+        used for the final, already-non-critical summary step.
+        """
+        combined_input = f"{system_prompt}\n\n{user_prompt}"
+        payload = {
+            "model": GEMINI_MODELS[0],
+            "input": combined_input,
+            "store": False,
+            "stream": True,
+        }
+        with requests.post(
+            GEMINI_URL,
+            headers={
+                "x-goog-api-key": self.api_key,
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            timeout=60,
+            stream=True,
+        ) as resp:
+            resp.raise_for_status()
+            event_type = None
+            # Decode bytes as UTF-8 ourselves — requests' decode_unicode=True
+            # guesses the response encoding and can get it wrong for SSE
+            # streams, silently mangling non-ASCII (Turkish) characters.
+            for raw_bytes in resp.iter_lines(decode_unicode=False):
+                raw_line = raw_bytes.decode("utf-8") if raw_bytes else ""
+                if not raw_line:
+                    continue
+                if raw_line.startswith("event:"):
+                    event_type = raw_line[len("event:"):].strip()
+                    continue
+                if raw_line.startswith("data:"):
+                    payload_str = raw_line[len("data:"):].strip()
+                    if payload_str == "[DONE]":
+                        break
+                    try:
+                        event_data = json.loads(payload_str)
+                    except json.JSONDecodeError:
+                        continue
+                    if event_type == "step.delta":
+                        delta = event_data.get("delta", {})
+                        if delta.get("type") == "text":
+                            text = delta.get("text", "")
+                            if text:
+                                yield text

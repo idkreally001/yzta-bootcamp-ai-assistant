@@ -52,3 +52,34 @@ class LMStudioClient(LLMClient):
 
     def complete_text(self, system_prompt, user_prompt):
         return self._call(system_prompt, user_prompt)
+
+    def stream_text(self, system_prompt, user_prompt):
+        with requests.post(
+            f"{self.base_url}/chat/completions",
+            json={
+                "model": self.model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "temperature": 0.1,
+                "stream": True,
+            },
+            timeout=120,
+            stream=True,
+        ) as resp:
+            resp.raise_for_status()
+            for raw_line in resp.iter_lines(decode_unicode=True):
+                if not raw_line or not raw_line.startswith("data:"):
+                    continue
+                payload_str = raw_line[len("data:"):].strip()
+                if payload_str == "[DONE]":
+                    break
+                try:
+                    chunk = json.loads(payload_str)
+                except json.JSONDecodeError:
+                    continue
+                delta = chunk.get("choices", [{}])[0].get("delta", {})
+                text = delta.get("content")
+                if text:
+                    yield text

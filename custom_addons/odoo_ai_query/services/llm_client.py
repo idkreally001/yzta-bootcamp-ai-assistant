@@ -13,3 +13,8 @@ class LLMClient(abc.ABC):
     def complete_text(self, system_prompt, user_prompt):
         """Send a prompt, return plain text response."""
         raise NotImplementedError
+
+    @abc.abstractmethod
+    def stream_text(self, system_prompt, user_prompt):
+        """Send a prompt, yield text chunks as they arrive (generator)."""
+        raise NotImplementedError

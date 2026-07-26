@@ -131,15 +131,92 @@ Yalnızca doğal dilde yanıt ver, JSON değil, markdown formatlaması kullanma.
 def run_agent(env, question, history=None):
     """Agentic pipeline: tool routing -> (query_data and/or search_docs) -> summarize.
 
+    Returns dict: {answer, model, count, steps, ...} — same shape as before,
+    now implemented on top of _prepare_context() + a non-streaming complete_text().
+    """
+    llm = get_llm_client()
+    ctx = _prepare_context(env, question, llm, history=history)
+    if ctx.get("early_return"):
+        return ctx["early_return"]
+
+    answer = llm.complete_text(
+        "Sen yardımsever bir işletme veri asistanısın.",
+        _summary_prompt(ctx),
+    )
+    ctx["trace"].append({"step": "summarize", "output": {"answer": answer}})
+    return _finalize(ctx, answer)
+
+
+def prepare_stream(env, question, history=None):
+    """Eagerly run all ORM/RAG work (steps 1-3) and return everything needed
+    to stream the final answer text without touching `env` again. Safe to
+    call from a request handler and then hand the result to a generator that
+    outlives the request's cursor (e.g. an HTTP streaming response).
+
+    Returns (llm, ctx). If ctx has "early_return", there's no LLM streaming
+    to do — use ctx["early_return"] directly as the final result.
+    """
+    llm = get_llm_client()
+    ctx = _prepare_context(env, question, llm, history=history)
+    return llm, ctx
+
+
+def stream_answer_text(llm, ctx):
+    """Pure network/LLM generator, no ORM access — safe to iterate after the
+    originating request's cursor has closed. Yields text chunks, then a
+    final {"__final__": True, **result} dict."""
+    if ctx.get("early_return"):
+        result = ctx["early_return"]
+        yield result["answer"]
+        yield {"__final__": True, **result}
+        return
+
+    chunks = []
+    for chunk in llm.stream_text("Sen yardımsever bir işletme veri asistanısın.", _summary_prompt(ctx)):
+        chunks.append(chunk)
+        yield chunk
+    answer = "".join(chunks)
+    ctx["trace"].append({"step": "summarize", "output": {"answer": answer}})
+    yield {"__final__": True, **_finalize(ctx, answer)}
+
+
+def _summary_prompt(ctx):
+    doc_context = (
+        "\n\n".join(f"[{d['title']}]\n{d['content']}" for d in ctx["doc_hits"]) or "(yok)"
+    )
+    model = ctx["model"]
+    return SUMMARY_PROMPT.format(
+        question=ctx["question"],
+        model=ALLOWED_MODELS[model]["label"] if model else "(yok)",
+        count=len(ctx["records"]),
+        data=ctx["records"][:MAX_ROWS],
+        doc_context=doc_context,
+    )
+
+
+def _finalize(ctx, answer):
+    return {
+        "answer": answer,
+        "model": ctx["model"],
+        "count": len(ctx["records"]),
+        "tools": ctx["tools"],
+        "domain": ctx["domain"],
+        "fields": ctx["fields"],
+        "limit": ctx["limit"],
+        "order": ctx["order"],
+        "steps": ctx["trace"],
+    }
+
+
+def _prepare_context(env, question, llm, history=None):
+    """Steps 1-3 of the pipeline: tool routing, query planning/execution,
+    and/or RAG retrieval. Returns everything the summarize step needs.
+
     The router picks one or both tools per question — this is genuine agentic
     tool-selection, not a fixed sequence: a data question skips RAG entirely,
     a procedural question skips the ORM query entirely, and a mixed question
     (rare) can trigger both, merged into one summary.
-
-    Returns dict: {answer, model, count, steps, ...} where `steps` records
-    what the agent decided at each stage (useful for demo/debugging).
     """
-    llm = get_llm_client()
     history = history or []
     trace = []
 
@@ -160,12 +237,14 @@ def run_agent(env, question, history=None):
 
     if not tools:
         return {
-            "answer": "Bu soruyu mevcut verilerle yanıtlayamıyorum. Satış siparişleri, "
-            "ürünler, stok durumu veya Odoo kullanım rehberi hakkında sorabilirsiniz.",
-            "model": None,
-            "count": 0,
-            "tools": [],
-            "steps": trace,
+            "early_return": {
+                "answer": "Bu soruyu mevcut verilerle yanıtlayamıyorum. Satış siparişleri, "
+                "ürünler, stok durumu veya Odoo kullanım rehberi hakkında sorabilirsiniz.",
+                "model": None,
+                "count": 0,
+                "tools": [],
+                "steps": trace,
+            }
         }
 
     records = []
@@ -228,41 +307,30 @@ def run_agent(env, question, history=None):
 
     if not records and not doc_hits:
         return {
-            "answer": "Bu konuda mevcut verilerde veya rehberde bir sonuç bulamadım.",
-            "model": model,
-            "count": 0,
-            "tools": tools,
-            "domain": domain,
-            "steps": trace,
+            "early_return": {
+                "answer": "Bu konuda mevcut verilerde veya rehberde bir sonuç bulamadım.",
+                "model": model,
+                "count": 0,
+                "tools": tools,
+                "domain": domain,
+                "steps": trace,
+            }
         }
 
-    # Step 4: summarize
     # Data sent to the LLM is capped at MAX_ROWS (same as the query limit) so
     # the visible row count always matches `count` — a mismatch here previously
     # caused the model to narrate a wrong total taken from the truncated list.
-    doc_context = "\n\n".join(f"[{d['title']}]\n{d['content']}" for d in doc_hits) or "(yok)"
-    answer = llm.complete_text(
-        "Sen yardımsever bir işletme veri asistanısın.",
-        SUMMARY_PROMPT.format(
-            question=question,
-            model=ALLOWED_MODELS[model]["label"] if model else "(yok)",
-            count=len(records),
-            data=records[:MAX_ROWS],
-            doc_context=doc_context,
-        ),
-    )
-    trace.append({"step": "summarize", "output": {"answer": answer}})
-
     return {
-        "answer": answer,
+        "question": question,
         "model": model,
-        "count": len(records),
+        "records": records,
+        "doc_hits": doc_hits,
         "tools": tools,
         "domain": domain,
         "fields": fields,
         "limit": limit,
         "order": order,
-        "steps": trace,
+        "trace": trace,
     }
 
 
