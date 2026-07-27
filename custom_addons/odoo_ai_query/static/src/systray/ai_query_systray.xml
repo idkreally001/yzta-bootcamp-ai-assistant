@@ -1,9 +1,59 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="odoo_ai_query.SystrayItem">
-        <div class="o_ai_query_systray d-flex align-items-center px-2 cursor-pointer"
-             t-on-click="onClick" title="AI İş Asistanı">
-            <i class="fa fa-magic" role="img" aria-label="AI İş Asistanı"/>
-        </div>
+        <Dropdown state="dropdown" class="'o_ai_query_systray'" position="'bottom-end'">
+            <t t-set-slot="toggler">
+                <div class="o_ai_query_systray_icon d-flex align-items-center px-2 cursor-pointer"
+                     title="AI İş Asistanı">
+                    <i class="fa fa-magic" role="img" aria-label="AI İş Asistanı"/>
+                </div>
+            </t>
+            <div class="o_ai_query_panel">
+                <div class="o_ai_query_panel_header">
+                    <i class="fa fa-magic"/>
+                    <span>AI İş Asistanı</span>
+                </div>
+                <div class="o_ai_query_panel_messages" t-ref="messages">
+                    <div t-if="!state.messages.length" class="o_ai_query_empty">
+                        <p>Bir soru sorun, ya da örneklerden birini deneyin:</p>
+                        <div class="o_ai_query_suggestions">
+                            <button type="button" class="o_ai_query_chip"
+                                    t-on-click="() => this.onSuggestion('Kaç tane satış siparişi var?')">
+                                Kaç satış siparişi var?
+                            </button>
+                            <button type="button" class="o_ai_query_chip"
+                                    t-on-click="() => this.onSuggestion('En pahalı 5 ürün hangileri?')">
+                                En pahalı 5 ürün
+                            </button>
+                            <button type="button" class="o_ai_query_chip"
+                                    t-on-click="() => this.onSuggestion('Bir siparişte iade nasıl yapılır?')">
+                                İade nasıl yapılır?
+                            </button>
+                        </div>
+                    </div>
+                    <t t-foreach="state.messages" t-as="msg" t-key="msg_index">
+                        <div t-attf-class="o_ai_query_msg_row {{ msg.role }}">
+                            <div t-attf-class="o_ai_query_avatar {{ msg.role === 'user' ? 'user' : 'assistant' }}">
+                                <i t-attf-class="fa {{ msg.role === 'user' ? 'fa-user' : 'fa-magic' }}"/>
+                            </div>
+                            <div class="o_ai_query_bubble">
+                                <span t-esc="msg.text"/>
+                                <span t-if="msg.streaming and !msg.text" class="o_ai_query_typing">
+                                    <span/><span/><span/>
+                                </span>
+                                <span t-if="msg.meta" class="o_ai_query_meta" t-esc="msg.meta"/>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+                <form class="o_ai_query_panel_form" t-on-submit="onSubmit">
+                    <input type="text" t-ref="input" placeholder="Örn: Bu ay en çok satan 5 ürün ne?"
+                           autocomplete="off" t-att-disabled="state.pending"/>
+                    <button type="submit" t-att-disabled="state.pending">
+                        <i class="fa fa-paper-plane"/>
+                    </button>
+                </form>
+            </div>
+        </Dropdown>
     </t>
 </templates>

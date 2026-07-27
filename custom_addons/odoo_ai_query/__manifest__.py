@@ -22,6 +22,7 @@ Odoo ORM üzerinden güvenli veri çekme ve doğal dilde özetleme.
             "odoo_ai_query/static/src/chat.js",
         ],
         "web.assets_backend": [
+            "odoo_ai_query/static/src/systray/ai_query_systray.css",
             "odoo_ai_query/static/src/systray/ai_query_systray.js",
             "odoo_ai_query/static/src/systray/ai_query_systray.xml",
         ],
