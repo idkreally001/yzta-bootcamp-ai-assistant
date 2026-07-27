@@ -115,6 +115,48 @@
     border: 1px solid #f5c6cb;
 }
 
+.o_ai_query_chart {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.o_ai_query_chart_row {
+    display: grid;
+    grid-template-columns: 70px 1fr auto;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+}
+
+.o_ai_query_chart_label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0.85;
+}
+
+.o_ai_query_chart_bar_wrap {
+    background: rgba(113, 75, 103, 0.12);
+    border-radius: 3px;
+    height: 11px;
+    overflow: hidden;
+}
+
+.o_ai_query_chart_bar {
+    height: 100%;
+    background: #714B67;
+    border-radius: 3px;
+    min-width: 2px;
+}
+
+.o_ai_query_chart_value {
+    font-size: 0.65rem;
+    opacity: 0.75;
+    white-space: nowrap;
+}
+
 .o_ai_query_meta {
     display: block;
     font-size: 0.65rem;

@@ -41,6 +41,19 @@
                                 <span t-if="msg.streaming and !msg.text" class="o_ai_query_typing">
                                     <span/><span/><span/>
                                 </span>
+                                <div t-if="msg.chart" class="o_ai_query_chart">
+                                    <t t-foreach="msg.chart.points" t-as="point" t-key="point_index">
+                                        <div class="o_ai_query_chart_row">
+                                            <span class="o_ai_query_chart_label" t-esc="point.label"/>
+                                            <div class="o_ai_query_chart_bar_wrap">
+                                                <div class="o_ai_query_chart_bar"
+                                                     t-attf-style="width: {{ this.barPct(point, msg.chart) }}%"/>
+                                            </div>
+                                            <span class="o_ai_query_chart_value"
+                                                  t-esc="this.formatValue(point.value)"/>
+                                        </div>
+                                    </t>
+                                </div>
                                 <span t-if="msg.meta" class="o_ai_query_meta" t-esc="msg.meta"/>
                             </div>
                         </div>

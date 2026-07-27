@@ -107,7 +107,7 @@
 .ai-msg {
     padding: 10px 14px;
     border-radius: 14px;
-    max-width: 78%;
+    max-width: 88%;
     line-height: 1.45;
     white-space: pre-wrap;
     font-size: 0.95rem;
@@ -137,6 +137,58 @@
     font-size: 0.72rem;
     opacity: 0.6;
     margin-top: 6px;
+}
+
+.ai-chart {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 220px;
+}
+
+.ai-chart-row {
+    display: grid;
+    grid-template-columns: 90px 1fr auto;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.78rem;
+}
+
+.ai-chart-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: inherit;
+    opacity: 0.85;
+}
+
+.ai-chart-bar-wrap {
+    background: rgba(113, 75, 103, 0.12);
+    border-radius: 4px;
+    height: 14px;
+    overflow: hidden;
+}
+
+.ai-msg-row.user .ai-chart-bar-wrap {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.ai-chart-bar {
+    height: 100%;
+    background: #714B67;
+    border-radius: 4px;
+    min-width: 3px;
+}
+
+.ai-msg-row.user .ai-chart-bar {
+    background: #fff;
+}
+
+.ai-chart-value {
+    font-size: 0.72rem;
+    opacity: 0.75;
+    white-space: nowrap;
 }
 
 .ai-typing {

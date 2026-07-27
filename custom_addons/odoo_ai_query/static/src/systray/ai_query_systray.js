@@ -39,9 +39,22 @@ class AIQuerySystrayItem extends Component {
         this._ask(question);
     }
 
+    maxChartValue(chart) {
+        return Math.max(...chart.points.map((p) => p.value));
+    }
+
+    barPct(point, chart) {
+        const max = this.maxChartValue(chart);
+        return max > 0 ? (point.value / max) * 100 : 0;
+    }
+
+    formatValue(value) {
+        return Number(value).toLocaleString("tr-TR");
+    }
+
     _ask(question) {
         this.state.messages.push({ role: "user", text: question });
-        const assistantMsg = { role: "assistant", text: "", meta: null, streaming: true };
+        const assistantMsg = { role: "assistant", text: "", meta: null, chart: null, streaming: true };
         this.state.pending = true;
 
         const url = "/odoo-ai/chat/stream?question=" + encodeURIComponent(question);
@@ -61,6 +74,9 @@ class AIQuerySystrayItem extends Component {
             const data = JSON.parse(ev.data);
             if (data.model) {
                 assistantMsg.meta = `model: ${data.model} · ${data.count} kayıt`;
+            }
+            if (data.chart && data.chart.points && data.chart.points.length) {
+                assistantMsg.chart = data.chart;
             }
             assistantMsg.streaming = false;
             source.close();

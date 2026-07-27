@@ -82,6 +82,7 @@ class AIQueryController(http.Controller):
             "model": result["model"],
             "tools": result.get("tools", []),
             "count": result["count"],
+            "chart": result.get("chart"),
         }
 
     @http.route("/odoo-ai/chat/stream", type="http", auth="user", methods=["GET"])
@@ -156,6 +157,7 @@ class AIQueryController(http.Controller):
                         "model": final_result.get("model"),
                         "tools": final_result.get("tools", []),
                         "count": final_result.get("count", 0),
+                        "chart": final_result.get("chart"),
                     })
                     yield f"event: done\ndata: {done_payload}\n\n"
             except Exception as exc:  # noqa: BLE001 — surface any agent failure to the UI

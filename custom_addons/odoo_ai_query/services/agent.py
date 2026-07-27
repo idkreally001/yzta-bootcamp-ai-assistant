@@ -14,16 +14,26 @@ ALLOWED_MODELS = {
     "sale.order": {
         "label": "Satış Siparişleri",
         "fields": ["name", "partner_id", "amount_total", "state", "date_order"],
+        "chart_label_field": "name",
+        "chart_value_field": "amount_total",
     },
     "product.product": {
         "label": "Ürünler",
         "fields": ["name", "list_price", "default_code", "type", "categ_id"],
+        "chart_label_field": "name",
+        "chart_value_field": "list_price",
     },
     "stock.quant": {
         "label": "Stok Durumu",
         "fields": ["product_id", "quantity", "location_id"],
+        "chart_label_field": "product_id",
+        "chart_value_field": "quantity",
     },
 }
+
+# Only render a chart for small, genuinely comparable result sets — a 24-row
+# bar chart is noise, not insight.
+CHART_MAX_ROWS = 10
 
 MAX_ROWS = 50
 
@@ -204,8 +214,37 @@ def _finalize(ctx, answer):
         "fields": ctx["fields"],
         "limit": ctx["limit"],
         "order": ctx["order"],
+        "chart": _build_chart(ctx["model"], ctx["records"]),
         "steps": ctx["trace"],
     }
+
+
+def _build_chart(model, records):
+    """Deterministic (non-LLM) bar-chart spec for small, comparable result
+    sets — avoids asking the model to emit chart data mixed with free text,
+    which would be fragile to parse and awkward to stream."""
+    if not model or not records or len(records) > CHART_MAX_ROWS:
+        return None
+
+    config = ALLOWED_MODELS[model]
+    label_field = config.get("chart_label_field")
+    value_field = config.get("chart_value_field")
+    if not label_field or not value_field:
+        return None
+
+    points = []
+    for rec in records:
+        value = rec.get(value_field)
+        if not isinstance(value, (int, float)):
+            continue
+        label = rec.get(label_field)
+        if isinstance(label, (list, tuple)) and len(label) == 2:
+            label = label[1]  # many2one -> [id, display_name]
+        points.append({"label": str(label), "value": value})
+
+    if len(points) < 2:  # a chart with one bar isn't useful
+        return None
+    return {"points": points, "value_label": value_field}
 
 
 def _prepare_context(env, question, llm, history=None):

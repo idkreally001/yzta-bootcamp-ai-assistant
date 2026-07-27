@@ -11,7 +11,39 @@
         if (emptyStateEl) emptyStateEl.remove();
     }
 
-    function appendMessage(text, role, meta) {
+    function buildChart(chart) {
+        const wrap = document.createElement("div");
+        wrap.className = "ai-chart";
+        const maxValue = Math.max(...chart.points.map((p) => p.value));
+        chart.points.forEach(function (point) {
+            const row = document.createElement("div");
+            row.className = "ai-chart-row";
+
+            const label = document.createElement("span");
+            label.className = "ai-chart-label";
+            label.textContent = point.label;
+
+            const barWrap = document.createElement("div");
+            barWrap.className = "ai-chart-bar-wrap";
+            const bar = document.createElement("div");
+            bar.className = "ai-chart-bar";
+            const pct = maxValue > 0 ? (point.value / maxValue) * 100 : 0;
+            bar.style.width = pct + "%";
+            barWrap.appendChild(bar);
+
+            const value = document.createElement("span");
+            value.className = "ai-chart-value";
+            value.textContent = Number(point.value).toLocaleString("tr-TR");
+
+            row.appendChild(label);
+            row.appendChild(barWrap);
+            row.appendChild(value);
+            wrap.appendChild(row);
+        });
+        return wrap;
+    }
+
+    function appendMessage(text, role, meta, chart) {
         const row = document.createElement("div");
         row.className = "ai-msg-row " + role;
 
@@ -23,7 +55,13 @@
 
         const bubble = document.createElement("div");
         bubble.className = "ai-msg";
-        bubble.textContent = text;
+        const textEl = document.createElement("span");
+        textEl.className = "ai-msg-text";
+        textEl.textContent = text;
+        bubble.appendChild(textEl);
+        if (chart && chart.points && chart.points.length) {
+            bubble.appendChild(buildChart(chart));
+        }
         if (meta) {
             const metaEl = document.createElement("span");
             metaEl.className = "meta";
@@ -90,6 +128,7 @@
 
         let bubbleRow = null;
         let bubbleEl = null;
+        let textEl = null;
         let fullText = "";
         let settled = false;
 
@@ -107,18 +146,23 @@
                     typingRow.remove();
                     bubbleRow = appendMessage("", "assistant");
                     bubbleEl = bubbleRow.querySelector(".ai-msg");
+                    textEl = bubbleEl.querySelector(".ai-msg-text");
                 }
                 fullText += text;
-                bubbleEl.textContent = fullText;
+                textEl.textContent = fullText;
                 messagesEl.scrollTop = messagesEl.scrollHeight;
             },
             onDone: function (meta) {
+                if (bubbleEl && meta.chart && meta.chart.points && meta.chart.points.length) {
+                    bubbleEl.appendChild(buildChart(meta.chart));
+                }
                 if (bubbleEl && meta.model) {
                     const metaEl = document.createElement("span");
                     metaEl.className = "meta";
                     metaEl.textContent = `model: ${meta.model} · ${meta.count} kayıt`;
                     bubbleEl.appendChild(metaEl);
                 }
+                messagesEl.scrollTop = messagesEl.scrollHeight;
                 finish();
             },
             onError: function (message) {
