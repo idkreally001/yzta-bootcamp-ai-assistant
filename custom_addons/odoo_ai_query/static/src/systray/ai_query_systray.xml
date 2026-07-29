@@ -11,6 +11,10 @@
                     <div class="o_ai_query_panel_header">
                         <i class="fa fa-magic"/>
                         <span>AI İş Asistanı</span>
+                        <a href="/odoo-ai" target="_blank" class="o_ai_query_expand"
+                           title="Tam sayfada aç">
+                            <i class="fa fa-external-link"/>
+                        </a>
                     </div>
                     <div class="o_ai_query_panel_messages" t-ref="messages">
                         <div t-if="!state.messages.length" class="o_ai_query_empty">

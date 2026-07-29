@@ -21,6 +21,22 @@
     color: #714B67;
 }
 
+.o_ai_query_panel_header span {
+    flex: 1;
+}
+
+.o_ai_query_expand {
+    color: #999;
+    font-size: 0.85rem;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+.o_ai_query_expand:hover {
+    color: #714B67;
+    background: rgba(113, 75, 103, 0.08);
+}
+
 .o_ai_query_panel_messages {
     flex: 1;
     overflow-y: auto;
