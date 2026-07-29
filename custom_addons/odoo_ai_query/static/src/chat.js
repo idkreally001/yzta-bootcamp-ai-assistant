@@ -1,8 +1,10 @@
 (function () {
     "use strict";
 
-    const messagesEl = document.getElementById("ai-chat-messages");
     const formEl = document.getElementById("ai-chat-form");
+    if (!formEl) return; // this bundle loads on every frontend page; only run on /odoo-ai
+
+    const messagesEl = document.getElementById("ai-chat-messages");
     const inputEl = document.getElementById("ai-chat-input");
     const submitEl = document.getElementById("ai-chat-submit");
     const emptyStateEl = document.getElementById("ai-chat-empty-state");
