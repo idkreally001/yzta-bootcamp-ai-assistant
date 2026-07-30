@@ -69,7 +69,7 @@ def get_index(api_key):
     return _index
 
 
-def search_docs(query, api_key, top_k=3, min_score=0.5):
+def search_docs(query, api_key, top_k=3, min_score=0.72):
     """Return the top_k most relevant FAQ docs for `query`, above min_score similarity."""
     index = get_index(api_key)
     if not index:

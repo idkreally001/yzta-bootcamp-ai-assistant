@@ -68,6 +68,12 @@ Kullanılabilir araçlar:
 2. search_docs — Odoo kullanım rehberi / SSS içinde arama yapar (örn. "sipariş nasıl
    oluşturulur", "iade nasıl yapılır", süreç/prosedür soruları — canlı veri değil).
 
+DİKKAT: Yalnızca cümlede "sipariş", "ürün", "stok" gibi kelimeler geçiyor diye araç seçme.
+Sorunun GERÇEK NİYETİNİ değerlendir. "Pasta nasıl yapılır" gibi işle alakasız bir soru,
+içinde "satış siparişi" kelimesi geçse bile Odoo/işletme ile ilgili DEĞİLDİR — bu durumda
+tools boş liste [] olmalı. Test: bu soru gerçekten Odoo'daki bir işletme sürecini mi
+soruyor, yoksa tamamen alakasız bir konuda mı (yemek tarifi, hava durumu, vb.)?
+
 Son konuşma geçmişi (araç, model, soru):
 {recent_turns}
 
