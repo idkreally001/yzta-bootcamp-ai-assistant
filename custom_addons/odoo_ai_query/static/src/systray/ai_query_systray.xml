@@ -11,6 +11,10 @@
                     <div class="o_ai_query_panel_header">
                         <i class="fa fa-magic"/>
                         <span>AI İş Asistanı</span>
+                        <button type="button" class="o_ai_query_clear" title="Sohbeti temizle"
+                                t-if="state.messages.length" t-on-click="onClear">
+                            <i class="fa fa-trash-o"/>
+                        </button>
                         <a href="/odoo-ai" target="_blank" class="o_ai_query_expand"
                            title="Tam sayfada aç">
                             <i class="fa fa-external-link"/>

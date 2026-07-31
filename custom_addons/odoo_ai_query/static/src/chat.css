@@ -38,6 +38,26 @@
     font-size: 0.9rem;
 }
 
+.ai-chat-header-text {
+    flex: 1;
+}
+
+#ai-chat-clear {
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 1.05rem;
+    padding: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+#ai-chat-clear:hover {
+    color: #a61b1b;
+    background: rgba(166, 27, 27, 0.08);
+}
+
 #ai-chat-messages {
     flex: 1;
     overflow-y: auto;

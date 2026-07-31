@@ -6,16 +6,20 @@
                 <title>AI İş Asistanı</title>
                 <link rel="stylesheet" type="text/css"
                       href="/web/static/src/libs/fontawesome/css/font-awesome.css"/>
-                <link rel="stylesheet" type="text/css" href="/odoo_ai_query/static/src/chat.css"/>
+                <link rel="stylesheet" type="text/css"
+                      t-attf-href="/odoo_ai_query/static/src/chat.css?v=#{asset_version}"/>
             </head>
             <body>
                 <div id="ai-chat-root">
                     <header class="ai-chat-header">
                         <div class="ai-chat-header-icon"><i class="fa fa-magic"/></div>
-                        <div>
+                        <div class="ai-chat-header-text">
                             <h1>AI İş Asistanı</h1>
                             <p>Satışlar, ürünler ve stok hakkında doğal dilde soru sorun.</p>
                         </div>
+                        <button type="button" id="ai-chat-clear" title="Sohbeti temizle">
+                            <i class="fa fa-trash-o"/>
+                        </button>
                     </header>
                     <div id="ai-chat-messages">
                         <div id="ai-chat-empty-state">
@@ -38,7 +42,8 @@
                         </button>
                     </form>
                 </div>
-                <script type="text/javascript" src="/odoo_ai_query/static/src/chat.js"/>
+                <script type="text/javascript"
+                        t-attf-src="/odoo_ai_query/static/src/chat.js?v=#{asset_version}"/>
             </body>
         </html>
     </template>

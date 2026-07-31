@@ -14,7 +14,15 @@ HISTORY_TURNS = 10
 class AIQueryController(http.Controller):
     @http.route("/odoo-ai", type="http", auth="user", website=False)
     def chat_page(self, **kwargs):
-        return request.render("odoo_ai_query.chat_page", {})
+        # Cache-bust the raw <link>/<script> asset tags below with the
+        # module's write_date -- Odoo serves static files with a long
+        # max-age, so without this a plain reload (not hard-reload) keeps
+        # serving a stale chat.js/chat.css after any code change.
+        module = request.env["ir.module.module"].sudo().search(
+            [("name", "=", "odoo_ai_query")], limit=1
+        )
+        asset_version = module.write_date.timestamp() if module else 0
+        return request.render("odoo_ai_query.chat_page", {"asset_version": int(asset_version)})
 
     def _get_or_create_conversation(self):
         session_key = request.session.sid

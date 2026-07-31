@@ -25,16 +25,25 @@
     flex: 1;
 }
 
-.o_ai_query_expand {
+.o_ai_query_expand,
+.o_ai_query_clear {
     color: #999;
     font-size: 0.85rem;
     padding: 4px;
     border-radius: 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
 }
 
 .o_ai_query_expand:hover {
     color: #714B67;
     background: rgba(113, 75, 103, 0.08);
+}
+
+.o_ai_query_clear:hover {
+    color: #a61b1b;
+    background: rgba(166, 27, 27, 0.08);
 }
 
 .o_ai_query_panel_messages {

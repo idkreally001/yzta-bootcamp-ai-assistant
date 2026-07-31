@@ -67,6 +67,20 @@ class AIQuerySystrayItem extends Component {
         this._ask(question);
     }
 
+    async onClear() {
+        if (!window.confirm("Sohbet geçmişi silinsin mi?")) return;
+        try {
+            await fetch("/odoo-ai/history/clear", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {} }),
+            });
+            this.state.messages.splice(0, this.state.messages.length);
+        } catch {
+            // leave messages as-is on failure
+        }
+    }
+
     maxChartValue(chart) {
         return Math.max(...chart.points.map((p) => p.value));
     }

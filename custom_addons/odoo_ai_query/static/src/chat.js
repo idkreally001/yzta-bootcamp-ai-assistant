@@ -214,6 +214,24 @@
         }
     }
 
+    const clearEl = document.getElementById("ai-chat-clear");
+    if (clearEl) {
+        clearEl.addEventListener("click", async function () {
+            if (!window.confirm("Sohbet geçmişi silinsin mi?")) return;
+            clearEl.disabled = true;
+            try {
+                await fetch("/odoo-ai/history/clear", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {} }),
+                });
+                window.location.reload();
+            } catch (err) {
+                clearEl.disabled = false;
+            }
+        });
+    }
+
     loadHistory();
     inputEl.focus();
 })();
