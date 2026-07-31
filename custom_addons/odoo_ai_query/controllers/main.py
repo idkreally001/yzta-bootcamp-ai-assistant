@@ -173,7 +173,22 @@ class AIQueryController(http.Controller):
             ],
         )
 
-    @http.route("/odoo-ai/history", type="jsonrpc", auth="user", methods=["POST"])
+    @http.route("/odoo-ai/history", type="jsonrpc", auth="user", methods=["GET", "POST"])
+    def get_history(self, **kwargs):
+        """Return this session's prior turns so the UI can rehydrate the
+        chat on page/panel (re)load instead of always starting empty."""
+        conversation = self._get_or_create_conversation()
+        turns = []
+        for line in conversation.line_ids:
+            turns.append({
+                "question": line.question,
+                "answer": line.answer,
+                "model": line.model_name or None,
+                "count": line.record_count,
+            })
+        return {"turns": turns}
+
+    @http.route("/odoo-ai/history/clear", type="jsonrpc", auth="user", methods=["POST"])
     def clear_history(self, **kwargs):
         conversation = self._get_or_create_conversation()
         conversation.line_ids.unlink()

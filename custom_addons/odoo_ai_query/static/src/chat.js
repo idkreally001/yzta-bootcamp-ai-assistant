@@ -190,5 +190,30 @@
         });
     });
 
+    async function loadHistory() {
+        try {
+            const resp = await fetch("/odoo-ai/history", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {} }),
+            });
+            const payload = await resp.json();
+            const turns = (payload.result && payload.result.turns) || [];
+            if (turns.length) {
+                removeEmptyState();
+                turns.forEach(function (turn) {
+                    appendMessage(turn.question, "user");
+                    const meta = turn.model
+                        ? `model: ${turn.model} · ${turn.count} kayıt`
+                        : null;
+                    appendMessage(turn.answer, "assistant", meta);
+                });
+            }
+        } catch (err) {
+            // Non-fatal — chat still works, it just starts empty on this load.
+        }
+    }
+
+    loadHistory();
     inputEl.focus();
 })();

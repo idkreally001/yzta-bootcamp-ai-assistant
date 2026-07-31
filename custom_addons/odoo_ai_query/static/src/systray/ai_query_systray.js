@@ -16,7 +16,35 @@ class AIQuerySystrayItem extends Component {
         });
         this.inputRef = useRef("input");
         this.messagesRef = useRef("messages");
-        onMounted(() => this._scrollToBottom());
+        onMounted(() => {
+            this._loadHistory();
+            this._scrollToBottom();
+        });
+    }
+
+    async _loadHistory() {
+        try {
+            const resp = await fetch("/odoo-ai/history", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {} }),
+            });
+            const payload = await resp.json();
+            const turns = (payload.result && payload.result.turns) || [];
+            turns.forEach((turn) => {
+                this.state.messages.push({ role: "user", text: turn.question });
+                this.state.messages.push({
+                    role: "assistant",
+                    text: turn.answer,
+                    meta: turn.model ? `model: ${turn.model} · ${turn.count} kayıt` : null,
+                    chart: null,
+                    streaming: false,
+                });
+            });
+            this._scrollToBottom();
+        } catch {
+            // Non-fatal — panel still works, just starts empty this time.
+        }
     }
 
     _scrollToBottom() {
