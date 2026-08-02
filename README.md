@@ -54,6 +54,11 @@ yapılır?" gibi sorularla anlık içgörü ve prosedür bilgisi almak isteyen k
 
 **Product Backlog:** Bu depo içinde tutulmaktadır — bkz. [Geliştirme Süreci](#geliştirme-süreci) bölümü.
 
+**Genelleştirilmiş versiyon:** Bu modülü geliştirdikten sonra aynı agent mantığının
+Odoo'ya özgü kalmasının projeyi sınırlayabileceğini düşünüp, herhangi bir Postgres
+veritabanına bağlanabilen terminal tabanlı bağımsız bir araca taşıdım:
+[dbagent](https://github.com/idkreally001/dbagent).
+
 ## Kullanılan Teknolojiler
 
 - **Platform:** Odoo 19.0 Community Edition (Docker)
